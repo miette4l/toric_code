@@ -1,0 +1,57 @@
+from argparse import ArgumentParser
+from time import time
+import numpy as np
+import matplotlib.pyplot as plt
+
+from corrector_with_shear.Lattice import Lattice, nx_template, win_or_lose
+
+def run(A, shear, threshold, NX, H, V):
+    A.apply_error(threshold)
+    BA = A.correct(NX)
+    result = win_or_lose(BA, H, V)
+    return result
+
+def repeat(A, shear, threshold, reps, NX, H, V):
+    results = []
+    for rep in range(reps):
+        result = run(A, shear, threshold, NX, H, V)
+        results.append(result)
+    return results.count(False)/reps
+
+def process():
+    parser = ArgumentParser(description="Plot a graph showing probability of successful correction for different lattice dimensions and error thresholds.")
+    """parser.add_argument('d_range', type=list,
+                        help="Input range of dimensions of qubit lattice you wish to plot.")"""
+    """parser.add_argument('shear', type=int,
+                        help="Input shear of qubit lattice.")"""
+    """parser.add_argument('t_range', type=list,
+                        help="Input thresholds (probability of error per qubit) you wish to plot. Format: [start, end, step]")"""
+    parser.add_argument('reps', type=int,
+                        help="Number of repetitions for set d, shear and threshold parameters.")
+    args = parser.parse_args()
+    
+    t0=time()
+    
+    """DEFAULT PARAMETERS for d_range, t_range and shear"""
+    d_range=[8]
+    t_range=list(np.arange(0.06, 0.15, 0.005))
+    s_range=[4]
+    
+    """Here we are going to set up all the things that only need to be done *once* for each (d, shear, threshold)"""
+    results = {}
+    for d in d_range:
+        for s in s_range:
+            y = []
+            A = Lattice(d, s) # create lattice template only once
+            NX = nx_template(d, s) # create nx graph template only once
+            H, V = A.logical_operators() # create set of logical operators only once
+            for thresh in t_range:
+                p_fail = repeat(A, s, thresh, args.reps, NX, H, V)
+                y.append(p_fail)
+            results[d, s] = y
+            print(d, s, y)
+    x, y = t_range, results
+    print(results)
+
+if __name__ == "__main__":
+    process()
